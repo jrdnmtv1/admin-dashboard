@@ -25,20 +25,45 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
-const initialUsers = [
-  { id: 1, nombre: "Ana Torres", correo: "ana@mail.com", rol: "Admin" },
-  { id: 2, nombre: "Carlos Díaz", correo: "carlos@mail.com", rol: "Editor" },
-];
+// const initialUsers = [
+//   { id: 1, nombre: "Ana Torres", correo: "ana@mail.com", rol: "Admin" },
+//   { id: 2, nombre: "Carlos Díaz", correo: "carlos@mail.com", rol: "Editor" },
+// ];
 
 export default function UsuariosPage() {
-  const [users, setUsers] = useState(initialUsers);
+  const [users, setUsers] = useState([]);
   const [nombre, setNombre] = useState("");
   const [correo, setCorreo] = useState("");
   const [rol, setRol] = useState("");
   const [editingUser, setEditingUser] = useState(null);
   const [open, setOpen] = useState(false);
   const [usuarioAEliminar, setUsuarioAEliminar] = useState(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [busqueda, setBusqueda] = useState("");
+  const [paginaActual, setPaginaActual] = useState(1);
+  const usuariosPorPagina = 8;
+
+  useEffect(() => {
+    fetch("http://localhost:4000/api/usuarios")
+      .then((res) => res.json())
+      .then((data) => {
+        setUsers(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Error al cargar usuarios: ", err);
+        setLoading(false);
+      });
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -46,45 +71,126 @@ export default function UsuariosPage() {
       setCorreo("");
       setRol("");
       setEditingUser(null);
+      setError("");
     }
   }, [open]);
 
-  const handleGuardar = () => {
-    if (!nombre || !correo || !rol) return;
+  useEffect(() => {
+    setPaginaActual(1);
+  }, [busqueda]);
 
-    if (editingUser) {
-      // Modo edición
-      const actualizados = users.map((u) =>
-        u.id === editingUser.id ? { ...u, nombre, correo, rol } : u
-      );
-      setUsers(actualizados);
-    } else {
-      // Modo agregar
-      const nuevo = {
-        id: Date.now(),
-        nombre,
-        correo,
-        rol,
-      };
-      setUsers([...users, nuevo]);
-    }
+  const usuariosFiltrados = users.filter((user) =>
+    user.nombre.toLowerCase().includes(busqueda.toLowerCase())
+  );
 
-    // Limpiar
-    setNombre("");
-    setCorreo("");
-    setRol("");
-    setEditingUser(null);
-    setOpen(false);
+  const totalPaginas = Math.ceil(usuariosFiltrados.length / usuariosPorPagina);
+
+  const usuariosPaginados = usuariosFiltrados.slice(
+    (paginaActual - 1) * usuariosPorPagina,
+    paginaActual * usuariosPorPagina
+  );
+
+  const esCorreoValido = (correo) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo);
   };
 
-  const handleEliminar = (id) => {
-    const confirmado = window.confirm(
-      "¿Estás seguro de eliminar este usuario?"
-    );
-    if (!confirmado) return;
+  const handleGuardar = async () => {
+    if (!nombre.trim() || !correo.trim() || !rol.trim()) {
+      setError("Todos los campos son obligatorios.");
+      return;
+    }
 
-    const filtrados = users.filter((u) => u.id !== id);
-    setUsers(filtrados);
+    if (!esCorreoValido(correo)) {
+      setError("El correo electrónico no es válido");
+      return;
+    }
+
+    // Limpiar errores si pasa validación
+    setError("");
+
+    try {
+      if (editingUser) {
+        const res = await fetch(
+          `http://localhost:4000/api/usuarios/${editingUser._id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nombre, correo, rol }),
+          }
+        );
+
+        const actualizado = await res.json();
+        setUsers(
+          users.map((u) => (u._id === actualizado._id ? actualizado : u))
+        );
+      } else {
+        const res = await fetch(`http://localhost:4000/api/usuarios`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nombre, correo, rol }),
+        });
+
+        const creado = await res.json();
+        setUsers([...users, creado]);
+      }
+
+      setNombre("");
+      setCorreo("");
+      setRol("");
+      setEditingUser(null);
+      setOpen(false);
+      setError("");
+    } catch (err) {
+      console.error("Error al guardar usuario: ", err);
+      setError("No se pudo guardar el usuario.");
+    }
+
+    // if (editingUser) {
+    //   // Modo edición
+    //   const actualizados = users.map((u) =>
+    //     u.id === editingUser.id ? { ...u, nombre, correo, rol } : u
+    //   );
+    //   setUsers(actualizados);
+    // } else {
+    //   // Modo agregar
+    //   const nuevo = {
+    //     id: Date.now(),
+    //     nombre,
+    //     correo,
+    //     rol,
+    //   };
+    //   setUsers([...users, nuevo]);
+    // }
+
+    // // Limpiar
+    // setNombre("");
+    // setCorreo("");
+    // setRol("");
+    // setEditingUser(null);
+    // setOpen(false);
+  };
+
+  // const handleEliminar = (id) => {
+  //   const confirmado = window.confirm(
+  //     "¿Estás seguro de eliminar este usuario?"
+  //   );
+  //   if (!confirmado) return;
+
+  //   const filtrados = users.filter((u) => u.id !== id);
+  //   setUsers(filtrados);
+  // };
+
+  const handleEliminar = async (id) => {
+    try {
+      await fetch(`http://localhost:4000/api/usuarios/${id}`, {
+        method: "DELETE",
+      });
+
+      setUsers(users.filter((u) => u._id !== id));
+      setUsuarioAEliminar(null);
+    } catch (err) {
+      console.log("Error al eliminar usuario:", err);
+    }
   };
 
   return (
@@ -112,7 +218,9 @@ export default function UsuariosPage() {
                   id="nombre"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0"
+                  className={`focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0 ${
+                    error && !nombre.trim() ? "border-red-500" : ""
+                  }`}
                 />
               </div>
               <div>
@@ -123,20 +231,33 @@ export default function UsuariosPage() {
                   id="correo"
                   value={correo}
                   onChange={(e) => setCorreo(e.target.value)}
-                  className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0"
+                  className={`focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0 ${
+                    error && (!correo.trim() || !esCorreoValido(correo))
+                      ? "border-red-500"
+                      : ""
+                  }`}
                 />
               </div>
               <div>
                 <Label htmlFor="rol" className="mb-1 block">
                   Rol
                 </Label>
-                <Input
-                  id="rol"
-                  value={rol}
-                  onChange={(e) => setRol(e.target.value)}
-                  className="focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-blue-500 focus-visible:ring-offset-0"
-                />
+                <Select value={rol} onValueChange={setRol}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona un rol" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white dark:bg-zinc-900 text-black dark:text-white">
+                    <SelectItem value="Admin">Admin</SelectItem>
+                    <SelectItem value="Editor">Editor</SelectItem>
+                    <SelectItem value="Invitado">Invitado</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+              {error && (
+                <p className="text-sm text-red-500 bg-red-100 dark:bg-red-950 dark:text-red-400 rounded px-3 py-2">
+                  {error}
+                </p>
+              )}
             </div>
 
             <DialogFooter>
@@ -147,7 +268,13 @@ export default function UsuariosPage() {
           </DialogContent>
         </Dialog>
       </div>
-
+      <input
+        type="text"
+        placeholder="Buscar por nombre..."
+        value={busqueda}
+        onChange={(e) => setBusqueda(e.target.value)}
+        className="mb-4 px-4 py-2 w-full sm:w-64 rounded border dark:bg-zinc-800 dark:border-zinc-700"
+      />
       <table className="w-full text-sm bg-white dark:bg-zinc-800 rounded shadow overflow-hidden">
         <thead>
           <tr className="bg-gray-100 dark:bg-zinc-700 text-left">
@@ -158,69 +285,98 @@ export default function UsuariosPage() {
           </tr>
         </thead>
         <tbody>
-          {users.map((user) => (
-            <tr
-              key={user.id}
-              className="border-t border-gray-200 dark:border-zinc-700"
-            >
-              <td className="px-4 py-2">{user.nombre}</td>
-              <td className="px-4 py-2">{user.correo}</td>
-              <td className="px-4 py-2">{user.rol}</td>
-              <td className="px-4 py-2 text-center space-x-2">
-                <button
-                  onClick={() => {
-                    setEditingUser(user);
-                    setNombre(user.nombre);
-                    setCorreo(user.correo);
-                    setRol(user.rol);
-                    setOpen(true);
-                  }}
-                  className="text-blue-500 hover:text-blue-700"
-                >
-                  <Pencil className="w-4 h-4 inline" />
-                </button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <button
-                      onClick={() => setUsuarioAEliminar(user)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash2 className="w-4 h-4 inline" />
-                    </button>
-                  </AlertDialogTrigger>
-
-                  <AlertDialogContent className="bg-white dark:bg-zinc-900 text-black dark:text-white p-6">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
-                    </AlertDialogHeader>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Estás a punto de eliminar permanentemente a{" "}
-                      <span className="font-semibold text-red-500">
-                        {usuarioAEliminar?.nombre}
-                      </span>
-                      . Esta acción no se puede deshacer.
-                    </p>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => {
-                          if (!usuarioAEliminar) return;
-                          setUsers(
-                            users.filter((u) => u.id !== usuarioAEliminar.id)
-                          );
-                          setUsuarioAEliminar(null);
-                        }}
-                      >
-                        Eliminar
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+          {loading ? (
+            <tr>
+              <td colSpan="4" className="text-center py-4 text-gray-500">
+                ⌛ Cargando usuarios...
               </td>
             </tr>
-          ))}
+          ) : (
+            usuariosPaginados.map((user) => (
+              <tr
+                key={user._id}
+                className="border-t border-gray-200 dark:border-zinc-700"
+              >
+                <td className="px-4 py-2">{user.nombre}</td>
+                <td className="px-4 py-2">{user.correo}</td>
+                <td className="px-4 py-2">{user.rol}</td>
+                <td className="px-4 py-2 text-center space-x-2">
+                  <button
+                    onClick={() => {
+                      setEditingUser(user);
+                      setNombre(user.nombre);
+                      setCorreo(user.correo);
+                      setRol(user.rol);
+                      setOpen(true);
+                    }}
+                    className="text-blue-500 hover:text-blue-700"
+                  >
+                    <Pencil className="w-4 h-4 inline" />
+                  </button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button
+                        onClick={() => setUsuarioAEliminar(user)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <Trash2 className="w-4 h-4 inline" />
+                      </button>
+                    </AlertDialogTrigger>
+
+                    <AlertDialogContent className="bg-white dark:bg-zinc-900 text-black dark:text-white p-6">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+                      </AlertDialogHeader>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Estás a punto de eliminar permanentemente a{" "}
+                        <span className="font-semibold text-red-500">
+                          {usuarioAEliminar?.nombre}
+                        </span>
+                        . Esta acción no se puede deshacer.
+                      </p>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => {
+                            if (!usuarioAEliminar) return;
+                            // setUsers(
+                            //   users.filter((u) => u.id !== usuarioAEliminar.id)
+                            // );
+                            handleEliminar(usuarioAEliminar._id);
+                            // setUsuarioAEliminar(null);
+                          }}
+                        >
+                          Eliminar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </td>
+              </tr>
+            ))
+          )}
         </tbody>
       </table>
+
+      <div className="fixed bottom-0 right-0 bg-white dark:bg-zinc-900 dark:border-zinc-700 py-2 px-4 flex justify-center items-center gap-4 z-50">
+        <button
+          onClick={() => setPaginaActual((p) => Math.max(p - 1, 1))}
+          disabled={paginaActual === 1}
+          className="px-3 py-1 border rounded disabled:opacity-50"
+        >
+          ⬅️Anterior
+        </button>
+        <span className="text-sm text-gray-700 dark:text-gray-300">
+          Página {paginaActual} de {totalPaginas}
+        </span>
+        <button
+          onClick={() => setPaginaActual((p) => Math.min(p + 1, totalPaginas))}
+          disabled={paginaActual === totalPaginas}
+          className="px-3 py-1 border rounded disabled:opacity-50"
+        >
+          Siguiente➡️
+        </button>
+      </div>
     </div>
   );
 }
