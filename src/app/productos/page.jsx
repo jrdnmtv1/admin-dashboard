@@ -28,7 +28,7 @@ export default function ProductosPage() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    fetch("https://usuario-api-w7k4.onrender.com/api/productos", {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/productos`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -128,18 +128,21 @@ export default function ProductosPage() {
           products.map((u) => (u._id === actualizado._id ? actualizado : u))
         );
       } else {
-        const res = await fetch(`https://usuario-api-w7k4.onrender.com/api/productos`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            nombre,
-            precio,
-            descripcion,
-            categoria,
-            stock,
-            imagen,
-          }),
-        });
+        const res = await fetch(
+          `https://usuario-api-w7k4.onrender.com/api/productos`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              nombre,
+              precio,
+              descripcion,
+              categoria,
+              stock,
+              imagen,
+            }),
+          }
+        );
 
         const creado = await res.json();
         setProducts([creado, ...products]);

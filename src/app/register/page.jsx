@@ -29,11 +29,14 @@ export default function RegisterPage() {
       setErrores({});
       setMensaje("");
 
-      const res = await fetch("https://usuario-api-w7k4.onrender.com/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, correo, password }),
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/auth/register`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nombre, correo, password }),
+        }
+      );
 
       const data = await res.json();
 
@@ -107,7 +110,9 @@ export default function RegisterPage() {
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className={`focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-offset-0 ${errores.password ? "border-red-500" : ""}`}
+          className={`focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-offset-0 ${
+            errores.password ? "border-red-500" : ""
+          }`}
         />
         {errores.password && (
           <p className="text-sm text-red-500">{errores.password}</p>
