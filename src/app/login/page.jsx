@@ -27,7 +27,7 @@ export default function LoginPage() {
       schema.parse({ correo, password });
       setErrores({});
 
-      const res = await fetch("http://localhost:4000/api/auth/login", {
+      const res = await fetch("https://usuario-api-w7k4.onrender.com/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ correo, password }),

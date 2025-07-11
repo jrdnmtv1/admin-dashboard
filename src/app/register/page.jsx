@@ -29,10 +29,10 @@ export default function RegisterPage() {
       setErrores({});
       setMensaje("");
 
-      const res = await fetch("http://localhost:4000/api/auth/register", {
+      const res = await fetch("https://usuario-api-w7k4.onrender.com/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nombre, correo, password, rol: "Invitado" }),
+        body: JSON.stringify({ nombre, correo, password }),
       });
 
       const data = await res.json();

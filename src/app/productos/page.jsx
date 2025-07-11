@@ -28,7 +28,7 @@ export default function ProductosPage() {
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    fetch("http://localhost:4000/api/productos", {
+    fetch("https://usuario-api-w7k4.onrender.com/api/productos", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -108,7 +108,7 @@ export default function ProductosPage() {
 
       if (editingProduct) {
         const res = await fetch(
-          `http://localhost:4000/api/productos/${editingProduct._id}`,
+          `https://usuario-api-w7k4.onrender.com/api/productos/${editingProduct._id}`,
           {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
@@ -128,7 +128,7 @@ export default function ProductosPage() {
           products.map((u) => (u._id === actualizado._id ? actualizado : u))
         );
       } else {
-        const res = await fetch(`http://localhost:4000/api/productos`, {
+        const res = await fetch(`https://usuario-api-w7k4.onrender.com/api/productos`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -171,7 +171,7 @@ export default function ProductosPage() {
 
   const handleEliminar = async (id) => {
     try {
-      await fetch(`http://localhost:4000/api/productos/${id}`, {
+      await fetch(`https://usuario-api-w7k4.onrender.com/api/productos/${id}`, {
         method: "DELETE",
       });
 
